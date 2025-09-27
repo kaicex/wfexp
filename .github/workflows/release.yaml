@@ -1,0 +1,35 @@
+name: Publish to PyPI
+on:
+  release:
+    types:
+      - published
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    env:
+      PACKAGE_VERSION: ${{ github.event.release.tag_name }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install build twine
+
+      - name: Build the project
+        run: |
+          # Ensure the version is set correctly in pyproject.toml
+          sed -i "s/^version = .*/version = \"$PACKAGE_VERSION\"/" pyproject.toml
+          python -m build
+
+      - name: Upload to PyPI
+        run: |
+          twine upload dist/*

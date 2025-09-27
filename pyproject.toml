@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=80.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "python-webflow-exporter"
+description = "A CLI tool to export Webflow pages"
+version = "1.0.0"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [{ name = "Simon Kobler", email = "github@kobler.me" }]
+dependencies = [
+    "requests==2.32.4", 
+    "argparse==1.4.0",
+    "beautifulsoup4==4.13.4",
+    "halo==0.0.31",
+    "pylint==3.3.7",
+    "setuptools==80.9.0",
+    "fastapi==0.110.0",
+    "uvicorn==0.30.1",
+]
+
+[tool.setuptools]
+packages = ["webexp"]
+
+[project.scripts]
+webexp = "webexp.cli:main"
