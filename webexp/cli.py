@@ -137,6 +137,7 @@ def run_export(
     silent=False,
     use_spinner=False,
     ensure_parent_dir=False,
+    single_page=False,
 ):
     """Execute the Webflow export workflow and return a summary."""
 
@@ -164,7 +165,7 @@ def run_export(
         clear_output_folder(output_path)
 
         _spinner_start(spinner, 'Scraping the web...')
-        assets_manifest = scan_html(url)
+        assets_manifest = scan_html(url, follow_internal_links=not single_page)
         _spinner_stop(spinner)
 
         logger.debug("Assets found: %s", json.dumps(assets_manifest, indent=2))
@@ -212,6 +213,11 @@ def main():
         help="generate a sitemap.xml file"
     )
     parser.add_argument(
+        "--single-page",
+        action="store_true",
+        help="export only the provided URL without following internal links"
+    )
+    parser.add_argument(
         "--version",
         action="version",
         version=f"python-webflow-exporter version: {VERSION_NUM}",
@@ -231,6 +237,7 @@ def main():
             silent=args.silent,
             use_spinner=True,
             ensure_parent_dir=False,
+            single_page=args.single_page,
         )
     except ValueError as exc:
         logger.error(str(exc))

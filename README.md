@@ -80,21 +80,33 @@ You can expose the exporter over HTTP (ideal for hosting on DigitalOcean and ser
 uvicorn webexp.api:app --host 0.0.0.0 --port 8000
 ```
 
-Once the server is running, request an export via JSON:
+Once the server is running, create an export job:
 
 ```bash
 curl -X POST \
      -H "Content-Type: application/json" \
-     -o webflow-export.zip \
      -d '{
            "url": "https://example.webflow.io",
            "remove_badge": true,
            "generate_sitemap": true
          }' \
      http://localhost:8000/exports
+# => {"job_id": "d2f2c6..."}
 ```
 
-The endpoint streams a ZIP archive containing the crawled site plus a `manifest.json` file describing the exported assets. A basic health check is available at `GET /health`.
+Poll the job to view live progress events:
+
+```bash
+curl http://localhost:8000/exports/<job_id>/progress
+```
+
+When the job status becomes `complete` (and `file_ready` is true), download the archive:
+
+```bash
+curl -L -o webflow-export.zip http://localhost:8000/exports/<job_id>/download
+```
+
+Each archive contains the exported site plus `manifest.json` and `progress.json` files describing the assets and recorded steps. A basic health check is available at `GET /health`.
 
 ### Arguments
 
@@ -135,6 +147,104 @@ _Optional:_
 - pylint
 
 They are included in `requirements.txt`.
+
+
+## Next.js integration
+
+You can connect a local Next.js app to the exporter while both projects run on your machine. The example below uses the App Router (Next.js 13+), but the same idea works with the Pages Router.
+
+1. **Run the FastAPI server**
+   ```bash
+   source .venv/bin/activate  # or your preferred venv activation
+   uvicorn webexp.api:app --host 127.0.0.1 --port 8000
+   ```
+2. **Expose the base URL to Next.js** – add the following to `.env.local` inside your Next.js project:
+   ```env
+   NEXT_PUBLIC_WFEXP_BASE_URL=http://127.0.0.1:8000
+   ```
+3. **Create a small client helper** (optional but keeps code tidy). For example, create `lib/wfexp-client.ts`:
+   ```ts
+   const baseUrl = process.env.NEXT_PUBLIC_WFEXP_BASE_URL ?? 'http://127.0.0.1:8000';
+   
+   type ExportPayload = {
+     url: string;
+     remove_badge?: boolean;
+     generate_sitemap?: boolean;
+     debug?: boolean;
+     silent?: boolean;
+     output_name?: string;
+   };
+   
+   export async function requestExport(payload: ExportPayload): Promise<Blob> {
+     const res = await fetch(`${baseUrl}/exports`, {
+       method: 'POST',
+       headers: { 'Content-Type': 'application/json' },
+       body: JSON.stringify(payload),
+     });
+   
+     if (!res.ok) {
+       const errorText = await res.text();
+       throw new Error(`Exporter error (${res.status}): ${errorText}`);
+     }
+   
+     return await res.blob();
+   }
+   ```
+4. **Add a Next.js API route** to proxy requests from the browser. This prevents the browser from downloading the ZIP directly and gives you a place to add auth/logging. Create `app/api/export/route.ts` (or `pages/api/export.ts` in Pages Router projects):
+   ```ts
+   import { NextRequest } from 'next/server';
+   
+   const baseUrl = process.env.NEXT_PUBLIC_WFEXP_BASE_URL ?? 'http://127.0.0.1:8000';
+   
+   export async function POST(req: NextRequest) {
+     const payload = await req.json();
+     const exporterResponse = await fetch(`${baseUrl}/exports`, {
+       method: 'POST',
+       headers: { 'Content-Type': 'application/json' },
+       body: JSON.stringify(payload),
+     });
+   
+     if (!exporterResponse.ok) {
+       const text = await exporterResponse.text();
+       return new Response(text, { status: exporterResponse.status });
+     }
+   
+     const buffer = await exporterResponse.arrayBuffer();
+     return new Response(buffer, {
+       status: 200,
+       headers: {
+         'Content-Type': 'application/zip',
+         'Content-Disposition': 'attachment; filename="webflow-export.zip"',
+       },
+     });
+   }
+   ```
+5. **Call the API route from your UI** – for example, inside a React Server Action or client component:
+   ```ts
+   const response = await fetch('/api/export', {
+     method: 'POST',
+     headers: { 'Content-Type': 'application/json' },
+     body: JSON.stringify({
+       url: 'https://example.webflow.io',
+       remove_badge: true,
+       generate_sitemap: true,
+     }),
+   });
+   
+   if (!response.ok) {
+     throw new Error('Export failed');
+   }
+   
+   const blob = await response.blob();
+   const downloadUrl = URL.createObjectURL(blob);
+   const link = document.createElement('a');
+   link.href = downloadUrl;
+   link.download = 'webflow-export.zip';
+   link.click();
+   URL.revokeObjectURL(downloadUrl);
+   ```
+
+Because the FastAPI app enables CORS for `http://localhost:3000`, you can also call it directly from the browser without the proxy route if preferred.
 
 ## Local development
 
