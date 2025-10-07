@@ -3,7 +3,6 @@ services:
     name: python-webflow-exporter
     env: python
     plan: free
-    runtime: python3.11
     region: oregon
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn webexp.api:app --host 0.0.0.0 --port $PORT
@@ -12,5 +11,7 @@ services:
     envVars:
       - key: PYTHONUNBUFFERED
         value: "1"
+      - key: PYTHON_VERSION
+        value: 3.11.0
       - key: CORS_ALLOW_ORIGINS
         value: https://your-next-app.netlify.app

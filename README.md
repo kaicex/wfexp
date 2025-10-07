@@ -156,6 +156,7 @@ The repository includes a `render.yaml` blueprint that provisions a free Python 
 1. **Push your fork to GitHub/GitLab** – Render deploys from a Git repository. Ensure `render.yaml` sits in the repository root.
 2. **Create a new Blueprint deployment** in Render and point it at your repository. Render will detect `render.yaml` and configure the service using the supplied build and start commands (`pip install -r requirements.txt` and `uvicorn webexp.api:app --host 0.0.0.0 --port $PORT`).
 3. **Set environment variables** when prompted:
+   - `PYTHON_VERSION` – the blueprint pins Python 3.11; you can adjust this if needed.
    - `CORS_ALLOW_ORIGINS` – comma-separated list of origins allowed to call the API, for example `https://your-next-app.netlify.app`.
    - `PYTHONUNBUFFERED` is already set in the blueprint to keep logs streaming in real time.
 4. **Trigger the first deploy**. Once the service status becomes “Live”, visit `https://<your-service>.onrender.com/health` to verify it responds with `{"status": "ok"}`.
