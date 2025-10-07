@@ -149,6 +149,19 @@ _Optional:_
 They are included in `requirements.txt`.
 
 
+## Deploying to Render
+
+The repository includes a `render.yaml` blueprint that provisions a free Python web service running the FastAPI API.
+
+1. **Push your fork to GitHub/GitLab** – Render deploys from a Git repository. Ensure `render.yaml` sits in the repository root.
+2. **Create a new Blueprint deployment** in Render and point it at your repository. Render will detect `render.yaml` and configure the service using the supplied build and start commands (`pip install -r requirements.txt` and `uvicorn webexp.api:app --host 0.0.0.0 --port $PORT`).
+3. **Set environment variables** when prompted:
+   - `CORS_ALLOW_ORIGINS` – comma-separated list of origins allowed to call the API, for example `https://your-next-app.netlify.app`.
+   - `PYTHONUNBUFFERED` is already set in the blueprint to keep logs streaming in real time.
+4. **Trigger the first deploy**. Once the service status becomes “Live”, visit `https://<your-service>.onrender.com/health` to verify it responds with `{"status": "ok"}`.
+
+Render automatically exposes the public URL that you can reference from your Next.js frontend. Adjust `CORS_ALLOW_ORIGINS` whenever you add more client applications.
+
 ## Next.js integration
 
 You can connect a local Next.js app to the exporter while both projects run on your machine. The example below uses the App Router (Next.js 13+), but the same idea works with the Pages Router.
@@ -244,7 +257,7 @@ You can connect a local Next.js app to the exporter while both projects run on y
    URL.revokeObjectURL(downloadUrl);
    ```
 
-Because the FastAPI app enables CORS for `http://localhost:3000`, you can also call it directly from the browser without the proxy route if preferred.
+When the exporter runs on Render, set `NEXT_PUBLIC_WFEXP_BASE_URL` (and any server-side equivalents) to the Render service URL, e.g. `https://python-webflow-exporter.onrender.com`. Because the FastAPI app now reads allowed origins from `CORS_ALLOW_ORIGINS`, make sure that variable includes your Netlify domain so browser requests succeed.
 
 ## Local development
 

@@ -29,6 +29,37 @@ from .cli import (
     logger as exporter_logger,
 )
 
+DEFAULT_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
+
+
+def _load_allowed_origins() -> list[str]:
+    """Return the list of CORS origins, optionally sourced from the environment."""
+
+    configured = os.environ.get("CORS_ALLOW_ORIGINS")
+    if not configured:
+        return DEFAULT_ALLOWED_ORIGINS
+
+    configured = configured.strip()
+    if not configured:
+        return DEFAULT_ALLOWED_ORIGINS
+
+    if configured == "*":
+        return ["*"]
+
+    origins = [origin.strip() for origin in configured.split(",") if origin.strip()]
+    if origins:
+        return origins
+
+    exporter_logger.warning(
+        "CORS_ALLOW_ORIGINS environment variable provided but no valid origins were parsed;"
+        " falling back to defaults."
+    )
+    return DEFAULT_ALLOWED_ORIGINS
+
+
 app = FastAPI(
     title="Python Webflow Exporter API",
     version=VERSION_NUM,
@@ -37,10 +68,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-    ],
+    allow_origins=_load_allowed_origins(),
     allow_methods=["*"],
     allow_headers=["*"],
 )
