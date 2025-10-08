@@ -12,12 +12,86 @@ import os
 import sys
 import logging
 from datetime import datetime
-from importlib.metadata import version
+from pathlib import Path
+from typing import Optional
+
+try:  # Python 3.10+
+    from importlib.metadata import PackageNotFoundError, version as pkg_version
+except ImportError:  # pragma: no cover - fallback for older runtimes
+    from importlib_metadata import PackageNotFoundError, version as pkg_version  # type: ignore
+
 import requests
 from bs4 import BeautifulSoup
 from halo import Halo
 
-VERSION_NUM = version("python-webflow-exporter")
+try:  # Python 3.11+
+    import tomllib  # type: ignore[attr-defined]
+except ModuleNotFoundError:  # pragma: no cover - fallback when tomllib missing
+    tomllib = None  # type: ignore[assignment]
+
+
+def _load_version_from_pyproject(pyproject_path: Path) -> Optional[str]:
+    """Return the version from pyproject.toml if available."""
+
+    if not pyproject_path.exists():
+        return None
+
+    try:
+        content = pyproject_path.read_text(encoding="utf-8")
+    except OSError:  # pragma: no cover - defensive
+        return None
+
+    data = None
+
+    if tomllib is not None:
+        try:
+            data = tomllib.loads(content)
+        except Exception:  # pragma: no cover - defensive
+            data = None
+    else:
+        try:
+            import tomli  # type: ignore
+        except ModuleNotFoundError:
+            tomli = None  # type: ignore
+        if tomli is not None:
+            try:
+                data = tomli.loads(content)
+            except Exception:  # pragma: no cover - defensive
+                data = None
+
+    if not data:
+        return None
+
+    project = data.get("project")
+    if isinstance(project, dict):
+        version_value = project.get("version")
+        if isinstance(version_value, str) and version_value.strip():
+            return version_value.strip()
+
+    return None
+
+
+def _determine_version() -> str:
+    """Determine the current package version with graceful fallbacks."""
+
+    package_name = "python-webflow-exporter"
+    try:
+        return pkg_version(package_name)
+    except PackageNotFoundError:
+        pyproject_version = _load_version_from_pyproject(
+            Path(__file__).resolve().parent.parent / "pyproject.toml"
+        )
+        if pyproject_version:
+            return pyproject_version
+
+        env_version = os.environ.get("WEBEXP_VERSION")
+        if env_version:
+            return env_version
+
+        return "0.0.0-dev"
+
+
+VERSION_NUM = _determine_version()
 
 WEBFLOW_ASSET_HOST_SUFFIXES = (
     "website-files.com",
