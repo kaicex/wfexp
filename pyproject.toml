@@ -11,14 +11,14 @@ requires-python = ">=3.10"
 license = {text = "MIT"}
 authors = [{ name = "Simon Kobler", email = "github@kobler.me" }]
 dependencies = [
-    "requests==2.32.4", 
+    "requests==2.32.5", 
     "argparse==1.4.0",
-    "beautifulsoup4==4.13.4",
+    "beautifulsoup4==4.14.3",
     "halo==0.0.31",
     "pylint==3.3.7",
-    "setuptools==80.9.0",
-    "fastapi==0.110.0",
-    "uvicorn==0.30.1",
+    "setuptools==80.10.1",
+    "fastapi==0.128.0",
+    "uvicorn==0.40.0",
 ]
 
 [tool.setuptools]
